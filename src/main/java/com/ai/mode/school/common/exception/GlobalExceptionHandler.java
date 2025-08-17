@@ -19,12 +19,12 @@ public class GlobalExceptionHandler {
         return Result.error(e.getCode(), e.getMessage());
     }
 
-    /**
-     * 拦截其他未处理的异常（如 NullPointerException 等）
-     */
-    @ExceptionHandler(Exception.class)
-    public Result<?> handleException(Exception e) {
-        // 生产环境建议不要暴露详细错误信息
-        return Result.error(500, "服务器内部错误：" + e.getMessage());
-    }
+//    /**
+//     * 拦截其他未处理的异常（如 NullPointerException 等）
+//     */
+//    @ExceptionHandler(Exception.class)
+//    public Result<?> handleException(Exception e) {
+//        // 生产环境建议不要暴露详细错误信息
+//        return Result.error(500, "服务器内部错误：" + e.getMessage());
+//    }
 }

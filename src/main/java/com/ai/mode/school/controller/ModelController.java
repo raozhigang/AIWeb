@@ -33,4 +33,19 @@ public class ModelController {
         return Result.success(jsonObject);
 
     }
+
+    /**
+     * 获取1+10的字体模型推理
+     *
+     * @param imageFile 上传的图片文件
+     * @param keyword   图片字体内容
+     * @return  推理结果
+     */
+    @PostMapping("/generateImage")
+    public Result<String> generateImage(@RequestParam("image") MultipartFile imageFile,@RequestParam("keyword") String keyword) {
+        // 调用 model 客户端服务
+        String imagePath = modelClientService.generateSimilarImgPath(imageFile, keyword);
+        return Result.success(imagePath);
+
+    }
 }
