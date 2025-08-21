@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver  # MySQL 8+ 必须使用此驱动类
+    url: jdbc:mysql://localhost:3306/calligraphy_font_app?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true # 开启驼峰命名自动映射（如 user_name → userName）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 打印 SQL 日志（开发环境推荐）
+  global-config:
+    db-config:
+      logic-delete-field: is_deleted # 逻辑删除字段（可选，根据业务需求）
+      logic-delete-value: 1 # 逻辑删除标记（1=删除，0=未删）
+  mapper-locations: classpath:mapper/*.xml # Mapper XML 文件路径（若有自定义 SQL）

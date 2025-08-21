@@ -2,6 +2,7 @@ package com.ai.mode.school.controller;
 
 import com.ai.mode.school.common.response.Result;
 import com.ai.mode.school.service.ModelClientService;
+import com.ai.mode.school.utils.JsonParser;
 import com.alibaba.fastjson2.JSONObject;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,11 +17,20 @@ import javax.annotation.Resource;
         origins = "http://localhost:9020",  // ✅ 不能用 "*"
         allowCredentials = "true"           // ✅ 允许凭据
 )
-public class ModelController {
+public class ModelController extends BaseController{
 
     @Resource
     private ModelClientService modelClientService;
+    @Resource
+    private JsonParser jsonParser;
 
+    @PostMapping("/put")
+    public Result put() {
+        // 调用 model 客户端服务
+        jsonParser.main();
+        return Result.success();
+
+    }
     /**
      * 接收图片并调用 model 检测服务
      * @param imageFile 上传的图片文件
@@ -29,7 +39,7 @@ public class ModelController {
     @PostMapping("/uploadImage")
     public Result detect(@RequestParam("image") MultipartFile imageFile) {
             // 调用 model 客户端服务
-        JSONObject jsonObject = modelClientService.detectObjects(imageFile);
+        JSONObject jsonObject = modelClientService.detectObjects(imageFile,getUser());
         return Result.success(jsonObject);
 
     }

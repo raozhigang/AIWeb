@@ -1,7 +1,9 @@
 package com.ai.mode.school.service;
 
 import cn.hutool.json.JSONUtil;
+import com.ai.mode.school.beans.entity.User;
 import com.ai.mode.school.common.exception.BusinessException;
+import com.ai.mode.school.dal.service.FontGenerationServiceImpl;
 import com.ai.mode.school.utils.ImageUploadUtils;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -22,6 +24,9 @@ public class ModelClientService {
     @Resource
     private RestTemplate restTemplate;
 
+    @Resource
+    private FontGenerationServiceImpl fontGenerationService;
+
     private final String modelServiceUrl = "http://127.0.0.1:5000";
 
 
@@ -29,7 +34,7 @@ public class ModelClientService {
      * 调用 model 推理服务，上传图片并获取检测结果
      * @param imageFile 上传的图片文件（MultipartFile）
      */
-    public JSONObject detectObjects(MultipartFile imageFile) {
+    public JSONObject detectObjects(MultipartFile imageFile, User user) {
         // 1. 校验文件是否为空
         if (imageFile.isEmpty()) {
             throw new BusinessException("上传的图片文件为空");
@@ -38,6 +43,7 @@ public class ModelClientService {
         if(imageLocalPath == null){
             throw new BusinessException("图片保存本地失败");
         }
+        fontGenerationService.saveFontGeneration(user.getUsername(),imageLocalPath);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         // 构造请求体（键名 "image" 需与服务端接口一致）
