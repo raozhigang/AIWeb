@@ -21,9 +21,10 @@ public class FontDataServiceImpl extends ServiceImpl<FontDataMapper, FontData> {
      * @param fontValue 字体名称
      * @return 字体数据列表
      */
-    public List<FontData> listFontsByValue(String fontValue) {
+    public List<FontData> listFontsByValue(String fontValue,String styleType) {
         LambdaQueryWrapper<FontData> queryWrapper = Wrappers.lambdaQuery();
-        queryWrapper.eq(StringUtils.isNotBlank(fontValue), FontData::getFontValue, fontValue);
+        queryWrapper.eq(FontData::getFontValue, fontValue);
+        queryWrapper.eq(FontData::getStyleType, styleType);
         return list(queryWrapper);
     }
 

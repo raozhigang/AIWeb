@@ -1,8 +1,11 @@
 package com.ai.mode.school.service;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.json.JSONUtil;
+import com.ai.mode.school.beans.entity.FontData;
 import com.ai.mode.school.beans.entity.User;
 import com.ai.mode.school.common.exception.BusinessException;
+import com.ai.mode.school.dal.service.FontDataServiceImpl;
 import com.ai.mode.school.dal.service.FontGenerationServiceImpl;
 import com.ai.mode.school.utils.ImageUploadUtils;
 import com.alibaba.fastjson2.JSON;
@@ -17,6 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.Resource;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,6 +32,9 @@ public class ModelClientService {
 
     @Resource
     private FontGenerationServiceImpl fontGenerationService;
+
+    @Resource
+    private FontDataServiceImpl fontDataService;
 
     private final String modelServiceUrl = "http://127.0.0.1:5000";
 
@@ -76,6 +84,11 @@ public class ModelClientService {
         if(imageLocalPath == null){
             throw new BusinessException("图片保存本地失败");
         }
+        List<FontData> fontData = fontDataService.listFontsByValue(keyword, model);
+        if(CollectionUtil.isEmpty(fontData)){
+            throw new BusinessException("暂不支持该文字，请联系管理员维护");
+        }
+        List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -83,6 +96,7 @@ public class ModelClientService {
             requestBody.put("image_path", imageLocalPath);
             requestBody.put("keyword",keyword);
             requestBody.put("model",model);
+            requestBody.put("basis_path",basis_path);
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/generateImg");
             log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
             ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
