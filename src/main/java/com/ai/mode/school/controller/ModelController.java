@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Base64;
 
 @RestController
 @CrossOrigin(
@@ -59,22 +60,14 @@ public class ModelController extends BaseController{
      * @return  推理结果
      */
     @PostMapping("/generateImage")
-    public ResponseEntity<byte[]> generateImage(@RequestParam("image") MultipartFile imageFile,@RequestParam("keyword") String keyword,
+    public Result<String> generateImage(@RequestParam("image") MultipartFile imageFile,@RequestParam("keyword") String keyword,
                                         @RequestParam("model") String model) throws IOException {
         // 调用 model 客户端服务
         String imagePath = modelClientService.generateSimilarImgPath(imageFile, keyword,model);
         // 读取文件内容
         byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
+        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-        // 设置响应头
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.IMAGE_JPEG); // 根据实际图片类型调整
-        //headers.setContentDispositionFormData("attachment", "imageName");
-        headers.setContentDispositionFormData("inline", "imageName");
-        headers.setContentLength(imageBytes.length);
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(imageBytes);
+        return Result.success(base64Image);
     }
 }
