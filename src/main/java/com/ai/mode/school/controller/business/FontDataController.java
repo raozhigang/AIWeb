@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
-// FontDataController.java
+@CrossOrigin(
+        origins = "http://localhost:9020",  // ✅ 不能用 "*"
+        allowCredentials = "true"           // ✅ 允许凭据
+)
 @RestController
 @RequestMapping("/api/fontData")
 public class FontDataController {
