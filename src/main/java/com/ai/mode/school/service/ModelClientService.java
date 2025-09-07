@@ -1,7 +1,11 @@
 package com.ai.mode.school.service;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.lang.Snowflake;
+import cn.hutool.core.lang.UUID;
+import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import cn.hutool.json.JSONUtil;
+import com.ai.mode.school.beans.dto.FontGenerateDto;
 import com.ai.mode.school.beans.entity.FontData;
 import com.ai.mode.school.beans.entity.User;
 import com.ai.mode.school.common.exception.BusinessException;
@@ -20,7 +24,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -38,6 +45,7 @@ public class ModelClientService {
 
     private final String modelServiceUrl = "http://127.0.0.1:5000";
 
+    private final Snowflake snowflake = new Snowflake();
 
     /**
      * 调用 model 推理服务，上传图片并获取检测结果
@@ -109,5 +117,41 @@ public class ModelClientService {
             log.error("模型服务异常:{}",e.getMessage());
         }
         return imageLocalPath;
+    }
+
+    public List<String> batchGenerateSimilarImgPath(List<FontGenerateDto> fontGenerateDtoList,String model) {
+        if (CollectionUtil.isEmpty(fontGenerateDtoList)) {
+            throw new BusinessException("请求参数不全");
+        }
+        for (FontGenerateDto fontGenerateDto : fontGenerateDtoList) {
+            List<FontData> fontData = fontDataService.listFontsByValue(fontGenerateDto.getKeyword(), model);
+            if(CollectionUtil.isEmpty(fontData)){
+                log.warn("字体数据库查询异常,未查询到该关键字:{}",fontGenerateDto.getKeyword());
+                continue;
+            }
+            List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
+            fontGenerateDto.setBasisPath(basis_path);
+        }
+        log.info("批量操作集合:{}",JSONUtil.toJsonStr(fontGenerateDtoList));
+        List<String> resultList = new ArrayList<>();
+        try {
+            String batchNo = snowflake.nextIdStr();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("data", JSONUtil.toJsonStr(fontGenerateDtoList));
+            requestBody.put("model",model);
+            requestBody.put("batchNo",batchNo);
+            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/batchGenerateImg");
+            log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
+            ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
+            log.info("model服务返回信息:{}",JSONUtil.toJsonStr(response));
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody()==null) {
+                throw new BusinessException("model 服务调用失败，状态码：" + response.getStatusCodeValue());
+            }
+        } catch (Exception e) {
+            log.error("模型服务异常:{}",e.getMessage());
+        }
+        return resultList;
     }
 }

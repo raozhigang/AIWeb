@@ -1,5 +1,7 @@
 package com.ai.mode.school.controller;
 
+import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
+import com.ai.mode.school.beans.dto.FontGenerateDto;
 import com.ai.mode.school.common.response.Result;
 import com.ai.mode.school.service.ModelClientService;
 import com.ai.mode.school.utils.JsonParser;
@@ -7,10 +9,7 @@ import com.alibaba.fastjson2.JSONObject;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
@@ -18,7 +17,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 @RestController
 @CrossOrigin(
@@ -69,5 +70,21 @@ public class ModelController extends BaseController{
         String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
         return Result.success(base64Image);
+    }
+
+    //批量操作
+    @PostMapping("/batchGenerateImage")
+    public Result<List<String>> generateImage(@RequestBody BatchFontGenerateReq req) throws IOException {
+        // 调用 model 客户端服务
+        List<String> imagePaths = modelClientService.batchGenerateSimilarImgPath(req.getData(),req.getModel());
+        // 批量读取文件内容
+        List<String> res = new ArrayList<>();
+        for (String imagePath : imagePaths) {
+            byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+            res.add(base64Image);
+        }
+
+        return Result.success(res);
     }
 }
