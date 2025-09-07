@@ -113,7 +113,7 @@ public class ModelClientService {
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody()==null) {
                 throw new BusinessException("model 服务调用失败，状态码：" + response.getStatusCodeValue());
             }
-            return response.getBody().getString("imgPath");
+            return response.getBody().getString("generate_img_path");
         } catch (Exception e) {
             log.error("模型服务异常:{}",e.getMessage());
         }

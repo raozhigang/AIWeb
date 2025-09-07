@@ -20,8 +20,8 @@ public class JsonParser {
     @Resource
     private FontDataServiceImpl fontDataService;
     public void main() {
-        // JSON文件路径（需要将提供的JSON数据保存到该文件）
-        String jsonFilePath = "C:\\Users\\44575\\Desktop\\char_to_images.json";
+        // JSON文件路径（需要将提供的JSON数据保存到该文件）C:\ABW-Font
+        String jsonFilePath = "C:\\ABW-Font\\char_to_images.json";
         
         try {
             // 读取JSON文件并解析到Map
