@@ -5,6 +5,7 @@ import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import cn.hutool.json.JSONUtil;
+import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
 import com.ai.mode.school.beans.dto.FontGenerateDto;
 import com.ai.mode.school.beans.entity.FontData;
 import com.ai.mode.school.beans.entity.User;
@@ -119,12 +120,12 @@ public class ModelClientService {
         return imageLocalPath;
     }
 
-    public List<String> batchGenerateSimilarImgPath(List<FontGenerateDto> fontGenerateDtoList,String model) {
-        if (CollectionUtil.isEmpty(fontGenerateDtoList)) {
+    public List<String> batchGenerateSimilarImgPath(BatchFontGenerateReq req) {
+        if (CollectionUtil.isEmpty(req.getData())) {
             throw new BusinessException("请求参数不全");
         }
-        for (FontGenerateDto fontGenerateDto : fontGenerateDtoList) {
-            List<FontData> fontData = fontDataService.listFontsByValue(fontGenerateDto.getKeyword(), model);
+        for (FontGenerateDto fontGenerateDto : req.getData()) {
+            List<FontData> fontData = fontDataService.listFontsByValue(fontGenerateDto.getKeyword(), req.getModel());
             if(CollectionUtil.isEmpty(fontData)){
                 log.warn("字体数据库查询异常,未查询到该关键字:{}",fontGenerateDto.getKeyword());
                 continue;
@@ -132,15 +133,14 @@ public class ModelClientService {
             List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
             fontGenerateDto.setBasisPath(basis_path);
         }
-        log.info("批量操作集合:{}",JSONUtil.toJsonStr(fontGenerateDtoList));
+        log.info("批量操作集合:{}",JSONUtil.toJsonStr(req));
         List<String> resultList = new ArrayList<>();
         try {
             String batchNo = snowflake.nextIdStr();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             JSONObject requestBody = new JSONObject();
-            requestBody.put("data", JSONUtil.toJsonStr(fontGenerateDtoList));
-            requestBody.put("model",model);
+            requestBody.put("req", JSONUtil.toJsonStr(req));
             requestBody.put("batchNo",batchNo);
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/batchGenerateImg");
             log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));

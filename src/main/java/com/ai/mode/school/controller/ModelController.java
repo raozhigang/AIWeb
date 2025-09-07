@@ -76,7 +76,7 @@ public class ModelController extends BaseController{
     @PostMapping("/batchGenerateImage")
     public Result<List<String>> generateImage(@RequestBody BatchFontGenerateReq req) throws IOException {
         // 调用 model 客户端服务
-        List<String> imagePaths = modelClientService.batchGenerateSimilarImgPath(req.getData(),req.getModel());
+        List<String> imagePaths = modelClientService.batchGenerateSimilarImgPath(req);
         // 批量读取文件内容
         List<String> res = new ArrayList<>();
         for (String imagePath : imagePaths) {
