@@ -84,7 +84,6 @@ public class ModelController extends BaseController{
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             res.add(base64Image);
         }
-
         return Result.success(res);
     }
 }

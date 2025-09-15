@@ -10,6 +10,8 @@ public class FontGenerateDto {
 
     private String keyword;
 
+    private String url;
+
     private String imagePath;
     
     private List<String> basisPath;

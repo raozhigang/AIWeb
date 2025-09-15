@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Random;
 
@@ -25,6 +26,38 @@ public class ImageUploadUtils {
     private static final int RANDOM_LENGTH = 2;
     private static final Random random = new Random();
 
+    public static MultipartFile base64ToMultipart(String base64, String fileName) {
+        try {
+            String[] parts = base64.split(",");
+
+            String base64Data;
+            String contentType = "application/octet-stream";
+
+            if (parts.length == 2) {
+                // 带 data:image/png;base64 前缀
+                base64Data = parts[1];
+                String dataPrefix = parts[0];
+                if (dataPrefix.contains(":") && dataPrefix.contains(";")) {
+                    contentType = dataPrefix.substring(dataPrefix.indexOf(":") + 1, dataPrefix.indexOf(";"));
+                }
+            } else {
+                // 纯 Base64
+                base64Data = base64;
+            }
+
+            byte[] fileContent = Base64.getDecoder().decode(base64Data);
+
+            return new Base64MultipartFile(
+                    fileContent,
+                    fileName,
+                    fileName,
+                    contentType
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException("Base64 转 MultipartFile 失败", e);
+        }
+    }
     /**
      * 保存上传的图片到本地指定路径
      * @param file 上传的 MultipartFile 文件

@@ -8,6 +8,8 @@ import java.util.List;
 @Data
 public class BatchFontGenerateReq {
 
+    private String batchNo;
+
     private String model;
 
     private List<FontGenerateDto> data;

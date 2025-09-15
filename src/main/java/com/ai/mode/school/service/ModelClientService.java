@@ -124,24 +124,18 @@ public class ModelClientService {
         if (CollectionUtil.isEmpty(req.getData())) {
             throw new BusinessException("请求参数不全");
         }
-        for (FontGenerateDto fontGenerateDto : req.getData()) {
-            List<FontData> fontData = fontDataService.listFontsByValue(fontGenerateDto.getKeyword(), req.getModel());
-            if(CollectionUtil.isEmpty(fontData)){
-                log.warn("字体数据库查询异常,未查询到该关键字:{}",fontGenerateDto.getKeyword());
-                continue;
-            }
-            List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
-            fontGenerateDto.setBasisPath(basis_path);
-        }
+        String batchNo = snowflake.nextIdStr();
+        req.setBatchNo(batchNo);
         log.info("批量操作集合:{}",JSONUtil.toJsonStr(req));
+
+        //OCR识别字体
+        BatchFontGenerateReq res = this.OCRAndSaveKeyword(req);
         List<String> resultList = new ArrayList<>();
         try {
-            String batchNo = snowflake.nextIdStr();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             JSONObject requestBody = new JSONObject();
-            requestBody.put("req", JSONUtil.toJsonStr(req));
-            requestBody.put("batchNo",batchNo);
+            requestBody.put("req", JSONUtil.toJsonStr(res));
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/batchGenerateImg");
             log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
             ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
@@ -153,5 +147,41 @@ public class ModelClientService {
             log.error("模型服务异常:{}",e.getMessage());
         }
         return resultList;
+    }
+
+    public BatchFontGenerateReq OCRAndSaveKeyword(BatchFontGenerateReq req) {
+        int count = 1;
+        //base64转换为地址
+        for (FontGenerateDto dto : req.getData()) {
+            MultipartFile multipartFile = ImageUploadUtils.base64ToMultipart(dto.getUrl(), req.getBatchNo() + count + ".png");
+            String imageToLocal = ImageUploadUtils.saveImageToLocal(multipartFile);
+            dto.setImagePath(imageToLocal);
+            dto.setUrl(null);
+            count++;
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("req", JSONUtil.toJsonStr(req));
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/batchOCRImg");
+        log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
+        ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
+        log.info("model服务返回信息:{}",JSONUtil.toJsonStr(response));
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody()==null) {
+            throw new BusinessException("model 服务调用失败，状态码：" + response.getStatusCodeValue());
+        }
+        JSONObject object = response.getBody();
+        BatchFontGenerateReq res = JSON.toJavaObject(object, BatchFontGenerateReq.class);
+        //根据识别出的keyword查库
+        for (FontGenerateDto fontGenerateDto : res.getData()) {
+            List<FontData> fontData = fontDataService.listFontsByValue(fontGenerateDto.getKeyword(), req.getModel());
+            if(CollectionUtil.isEmpty(fontData)){
+                log.warn("字体数据库查询异常,未查询到该关键字:{}",fontGenerateDto.getKeyword());
+                continue;
+            }
+            List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
+            fontGenerateDto.setBasisPath(basis_path);
+        }
+        return res;
     }
 }
