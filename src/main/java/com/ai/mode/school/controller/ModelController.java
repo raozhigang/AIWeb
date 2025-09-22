@@ -1,9 +1,13 @@
 package com.ai.mode.school.controller;
 
+import cn.hutool.json.JSONUtil;
 import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
 import com.ai.mode.school.beans.dto.FontGenerateDto;
 import com.ai.mode.school.beans.dto.WeightDto;
+import com.ai.mode.school.beans.entity.FontGeneration;
+import com.ai.mode.school.beans.entity.User;
 import com.ai.mode.school.common.response.Result;
+import com.ai.mode.school.dal.service.FontGenerationServiceImpl;
 import com.ai.mode.school.service.ModelClientService;
 import com.ai.mode.school.utils.JsonParser;
 import com.alibaba.fastjson2.JSONObject;
@@ -22,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin(
@@ -34,6 +39,8 @@ public class ModelController extends BaseController{
     private ModelClientService modelClientService;
     @Resource
     private JsonParser jsonParser;
+    @Resource
+    private FontGenerationServiceImpl fontGenerationService;
 
     @PostMapping("/put")
     public Result put() {
@@ -94,6 +101,16 @@ public class ModelController extends BaseController{
             String base64WithPrefix = "data:image/png;base64," + base64Image;
             dto.setBase64Url(base64WithPrefix);
         }
+        //保存操作记录
+        User user = getUser();
+        FontGeneration fontGeneration =new FontGeneration();
+        fontGeneration.setUserName(user.getUsername());
+        fontGeneration.setBatchNo(req.getBatchNo());
+        fontGeneration.setOperateType("FGFX");
+        fontGeneration.setStyleType(req.getModel());
+        List<String> stringList = req.getData().stream().map(FontGenerateDto::getImagePath).collect(Collectors.toList());
+        fontGeneration.setInputImageUrl(JSONUtil.toJsonStr(stringList));
+        fontGenerationService.saveFontGeneration(fontGeneration);
         return Result.success(req);
     }
 }
