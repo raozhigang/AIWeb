@@ -1,5 +1,6 @@
 package com.ai.mode.school.dal.service;
 
+import com.ai.mode.school.beans.dto.UserGenerateReq;
 import com.ai.mode.school.beans.entity.FontGeneration;
 import com.ai.mode.school.common.exception.BusinessException;
 import com.ai.mode.school.dal.mapper.FontGenerationMapper;
@@ -19,19 +20,15 @@ public class FontGenerationServiceImpl extends ServiceImpl<FontGenerationMapper,
 
     /**
      * 分页查询字体生成记录（支持条件过滤）
-     * @param pageNum  当前页码（从 1 开始）
-     * @param pageSize 每页显示数量（如 10、20）
-     * @param fontStyle 字体样式（可选过滤条件）
      * @return 分页结果（包含数据和总条数）
      */
-    public IPage<FontGeneration> listFontGenerationsByPage(int pageNum, int pageSize,
-                                                           String userName, String fontStyle) {
-        Page<FontGeneration> page = new Page<>(pageNum, pageSize);
+    public IPage<FontGeneration> listFontGenerationsByPage(UserGenerateReq req) {
+        Page<FontGeneration> page = new Page<>(req.getPageNum(), req.getPageSize());
         LambdaQueryWrapper<FontGeneration> queryWrapper = Wrappers.lambdaQuery();
 
         // 动态拼接过滤条件
-        if (StringUtils.isNotBlank(userName)) {
-            queryWrapper.like(FontGeneration::getUserName, userName);
+        if (StringUtils.isNotBlank(req.getUserName())) {
+            queryWrapper.like(FontGeneration::getUserName, req.getUserName());
         }
         return page(page, queryWrapper);
     }
@@ -41,14 +38,23 @@ public class FontGenerationServiceImpl extends ServiceImpl<FontGenerationMapper,
      * @return 保存成功返回 true，失败返回 false
      */
     @Transactional(rollbackFor = Exception.class)
-    public boolean saveFontGeneration(String userName,String inputImageUrl) {
+    public boolean saveFontGeneration(FontGeneration fontGeneration) {
         // 可选：添加业务校验（如必填字段检查）
-        if (userName == null || inputImageUrl == null) {
-            throw new BusinessException("参数为空:输入图片地址");
+        if (fontGeneration.getUserName() == null || fontGeneration.getOperateType() == null) {
+            throw new BusinessException("参数错误:操作用户为空");
         }
-        FontGeneration fontGeneration =new FontGeneration();
-        fontGeneration.setUserName(userName);
-        fontGeneration.setInputImageUrl(inputImageUrl);
         return save(fontGeneration);
+    }
+
+    public boolean updateFontGeneration(String batchNo,String styleName) {
+        // 可选：添加业务校验（如必填字段检查）
+        LambdaQueryWrapper<FontGeneration> queryWrapper = Wrappers.lambdaQuery();
+        queryWrapper.eq(FontGeneration::getBatchNo,batchNo);
+        FontGeneration fontGeneration = this.getOne(queryWrapper);
+        if(fontGeneration == null){
+            throw new BusinessException("不存在该操作记录");
+        }
+        fontGeneration.setStyleName(styleName);
+        return updateById(fontGeneration);
     }
 }

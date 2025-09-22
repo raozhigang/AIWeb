@@ -32,7 +32,15 @@ public class FontGeneration {
     
     @TableField("status")
     private String status;
-    
+
+    private String weights;
+
+    private String styleName;
+
+    private String operateType;
+
+    private String batchNo;
+
     private Date createdAt;
     
     private Date updatedAt;
