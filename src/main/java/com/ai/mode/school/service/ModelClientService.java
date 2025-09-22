@@ -14,7 +14,9 @@ import com.ai.mode.school.dal.service.FontDataServiceImpl;
 import com.ai.mode.school.dal.service.FontGenerationServiceImpl;
 import com.ai.mode.school.utils.ImageUploadUtils;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.JSONReader;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.*;
@@ -120,7 +122,7 @@ public class ModelClientService {
         return imageLocalPath;
     }
 
-    public List<String> batchGenerateSimilarImgPath(BatchFontGenerateReq req) {
+    public JSONObject batchGenerateSimilarImgPath(BatchFontGenerateReq req) {
         if (CollectionUtil.isEmpty(req.getData())) {
             throw new BusinessException("请求参数不全");
         }
@@ -129,27 +131,28 @@ public class ModelClientService {
         log.info("批量操作集合:{}",JSONUtil.toJsonStr(req));
 
         //OCR识别字体
-        BatchFontGenerateReq res = this.OCRAndSaveKeyword(req);
-        List<String> resultList = new ArrayList<>();
+        this.OCRAndSaveKeyword(req);
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             JSONObject requestBody = new JSONObject();
-            requestBody.put("req", JSONUtil.toJsonStr(res));
+            requestBody.put("req", req);
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/batchGenerateImg");
-            log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
+            log.info("model服务权重计算请求信息:{}",JSONUtil.toJsonStr(requestBody));
             ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
-            log.info("model服务返回信息:{}",JSONUtil.toJsonStr(response));
+            log.info("model服务权重计算返回信息:{}",JSONUtil.toJsonStr(response));
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody()==null) {
-                throw new BusinessException("model 服务调用失败，状态码：" + response.getStatusCodeValue());
+                throw new BusinessException("model服务权重计算调用失败，状态码：" + response.getStatusCodeValue());
             }
+            JSONObject body = response.getBody();
+            return body.getJSONObject("received_items");
         } catch (Exception e) {
-            log.error("模型服务异常:{}",e.getMessage());
+            log.error("模型服务权重计算异常:{}",e.getMessage());
         }
-        return resultList;
+        return null;
     }
 
-    public BatchFontGenerateReq OCRAndSaveKeyword(BatchFontGenerateReq req) {
+    public void OCRAndSaveKeyword(BatchFontGenerateReq req) {
         int count = 1;
         //base64转换为地址
         for (FontGenerateDto dto : req.getData()) {
@@ -162,18 +165,31 @@ public class ModelClientService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         JSONObject requestBody = new JSONObject();
-        requestBody.put("req", JSONUtil.toJsonStr(req));
+        requestBody.put("req", req);
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/batchOCRImg");
-        log.info("model服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
+        log.info("model服务OCR识别请求信息:{}",JSONUtil.toJsonStr(requestBody));
         ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
-        log.info("model服务返回信息:{}",JSONUtil.toJsonStr(response));
+        log.info("model服务OCR识别返回信息:{}",JSONUtil.toJsonStr(response));
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody()==null) {
-            throw new BusinessException("model 服务调用失败，状态码：" + response.getStatusCodeValue());
+            throw new BusinessException("model服务OCR识别调用失败，状态码：" + response.getStatusCodeValue());
         }
         JSONObject object = response.getBody();
-        BatchFontGenerateReq res = JSON.toJavaObject(object, BatchFontGenerateReq.class);
+        JSONArray receivedItems = object.getJSONArray("received_items");
+        req.getData().clear();
+        for (int i = 0; i < receivedItems.size(); i++) {
+            JSONObject jsonObject = receivedItems.getJSONObject(i);
+            String imageFile = jsonObject.getString("imageFile");
+            String keyword = "";
+            if(CollectionUtil.isNotEmpty(jsonObject.getJSONArray("texts"))) {
+                keyword = jsonObject.getJSONArray("texts").getString(0);
+            }
+            FontGenerateDto fontGenerateDto = new FontGenerateDto();
+            fontGenerateDto.setImagePath(imageFile);
+            fontGenerateDto.setKeyword(keyword);
+            req.getData().add(fontGenerateDto);
+        }
         //根据识别出的keyword查库
-        for (FontGenerateDto fontGenerateDto : res.getData()) {
+        for (FontGenerateDto fontGenerateDto : req.getData()) {
             List<FontData> fontData = fontDataService.listFontsByValue(fontGenerateDto.getKeyword(), req.getModel());
             if(CollectionUtil.isEmpty(fontData)){
                 log.warn("字体数据库查询异常,未查询到该关键字:{}",fontGenerateDto.getKeyword());
@@ -182,6 +198,5 @@ public class ModelClientService {
             List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
             fontGenerateDto.setBasisPath(basis_path);
         }
-        return res;
     }
 }

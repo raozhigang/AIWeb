@@ -1,19 +1,16 @@
 package com.ai.mode.school.beans.dto;
 
-import com.alibaba.fastjson2.JSONObject;
 import lombok.Data;
 
 import java.util.List;
 
 
 @Data
-public class BatchFontGenerateReq {
+public class BatchFontGenerateRes {
 
     private String batchNo;
 
     private String model;
-
-    private List<WeightDto> weightList;
 
     private List<FontGenerateDto> data;
 }

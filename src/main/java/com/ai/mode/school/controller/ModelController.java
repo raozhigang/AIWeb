@@ -2,6 +2,7 @@ package com.ai.mode.school.controller;
 
 import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
 import com.ai.mode.school.beans.dto.FontGenerateDto;
+import com.ai.mode.school.beans.dto.WeightDto;
 import com.ai.mode.school.common.response.Result;
 import com.ai.mode.school.service.ModelClientService;
 import com.ai.mode.school.utils.JsonParser;
@@ -20,6 +21,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @CrossOrigin(
@@ -74,16 +76,24 @@ public class ModelController extends BaseController{
 
     //批量操作
     @PostMapping("/batchGenerateImage")
-    public Result<List<String>> generateImage(@RequestBody BatchFontGenerateReq req) throws IOException {
-        // 调用 model 客户端服务
-        List<String> imagePaths = modelClientService.batchGenerateSimilarImgPath(req);
-        // 批量读取文件内容
-        List<String> res = new ArrayList<>();
-        for (String imagePath : imagePaths) {
+    public Result<BatchFontGenerateReq> generateImage(@RequestBody BatchFontGenerateReq req) throws IOException {
+        JSONObject jsonObject = modelClientService.batchGenerateSimilarImgPath(req);
+        List<WeightDto> list = new ArrayList<>();
+        for (String key : jsonObject.keySet()) {
+            WeightDto weightDto = new WeightDto();
+            weightDto.setWeightName(key);
+            weightDto.setWeightValue(jsonObject.getString(key));
+            list.add(weightDto);
+        }
+        req.setWeightList(list);
+        // 返回批量预处理内容
+        for (FontGenerateDto dto : req.getData()) {
+            String imagePath = dto.getImagePath();
             byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-            res.add(base64Image);
+            String base64WithPrefix = "data:image/png;base64," + base64Image;
+            dto.setBase64Url(base64WithPrefix);
         }
-        return Result.success(res);
+        return Result.success(req);
     }
 }

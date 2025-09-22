@@ -15,4 +15,6 @@ public class FontGenerateDto {
     private String imagePath;
     
     private List<String> basisPath;
+
+    private String base64Url;
 }
