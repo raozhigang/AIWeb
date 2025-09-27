@@ -33,6 +33,13 @@ public class FontGenerationServiceImpl extends ServiceImpl<FontGenerationMapper,
         return page(page, queryWrapper);
     }
 
+    public FontGeneration getByStyleName(String userName,String styleName) {
+        LambdaQueryWrapper<FontGeneration> queryWrapper = Wrappers.lambdaQuery();
+        // 动态拼接过滤条件
+        queryWrapper.eq(FontGeneration::getUserName, userName);
+        queryWrapper.eq(FontGeneration::getStyleName, styleName);
+        return getOne(queryWrapper);
+    }
     /**
      * 保存字体生成记录（新增）
      * @return 保存成功返回 true，失败返回 false
@@ -47,6 +54,7 @@ public class FontGenerationServiceImpl extends ServiceImpl<FontGenerationMapper,
     }
 
     public boolean updateFontGeneration(String batchNo,String styleName) {
+
         // 可选：添加业务校验（如必填字段检查）
         LambdaQueryWrapper<FontGeneration> queryWrapper = Wrappers.lambdaQuery();
         queryWrapper.eq(FontGeneration::getBatchNo,batchNo);
@@ -55,6 +63,10 @@ public class FontGenerationServiceImpl extends ServiceImpl<FontGenerationMapper,
             throw new BusinessException("不存在该操作记录");
         }
         fontGeneration.setStyleName(styleName);
+        FontGeneration byStyleName = this.getByStyleName(fontGeneration.getUserName(), fontGeneration.getStyleName());
+        if(byStyleName!=null){
+            throw new BusinessException("风格名称已经存在");
+        }
         return updateById(fontGeneration);
     }
 }

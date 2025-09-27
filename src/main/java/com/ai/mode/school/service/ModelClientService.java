@@ -8,7 +8,9 @@ import cn.hutool.json.JSONUtil;
 import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
 import com.ai.mode.school.beans.dto.FontGenerateButtonReq;
 import com.ai.mode.school.beans.dto.FontGenerateDto;
+import com.ai.mode.school.beans.dto.FontGenerateModelReq;
 import com.ai.mode.school.beans.entity.FontData;
+import com.ai.mode.school.beans.entity.FontGeneration;
 import com.ai.mode.school.beans.entity.User;
 import com.ai.mode.school.common.exception.BusinessException;
 import com.ai.mode.school.dal.service.FontDataServiceImpl;
@@ -206,17 +208,41 @@ public class ModelClientService {
      *
      * @param req 目标文字
      */
-    public String fontGenerateButton(FontGenerateButtonReq req) {
+    public String fontGenerateButton(FontGenerateButtonReq req,String userName) {
         // 1. 校验数据是否为空
-        if (StringUtils.isAnyEmpty(req.getWeights(),req.getTargetWord())) {
+        if (StringUtils.isEmpty(req.getStyleName()) || CollectionUtil.isEmpty(req.getTargetWords())) {
             throw new BusinessException("参数缺失");
         }
         //保存用户操作记录信息
         //fontGenerationService.saveFontGeneration(user.getUsername(),imageLocalPath);
+
+        FontGeneration byStyleName = fontGenerationService.getByStyleName(userName, req.getStyleName());
+        if(byStyleName == null){
+            throw new BusinessException("该风格不存在");
+        }
+        FontGenerateModelReq modelReq =new FontGenerateModelReq();
+        List<FontGenerateDto> targetWords =new ArrayList<>();
+        modelReq.setModel(byStyleName.getStyleType());
+        modelReq.setReferenceImage(byStyleName.getInputImageUrl());
+        modelReq.setWeights(byStyleName.getWeights());
+        modelReq.setTargetWords(targetWords);
+
+        for (String targetWord : req.getTargetWords()) {
+            FontGenerateDto fontGenerateDto =new FontGenerateDto();
+            List<FontData> fontData = fontDataService.listFontsByValue(targetWord, byStyleName.getStyleType());
+            if(CollectionUtil.isEmpty(fontData)){
+                log.warn("字体数据库查询异常,未查询到该关键字:{}",targetWord);
+                continue;
+            }
+            List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
+            fontGenerateDto.setBasisPath(basis_path);
+            fontGenerateDto.setKeyword(targetWord);
+            targetWords.add(fontGenerateDto);
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         JSONObject requestBody = new JSONObject();
-        requestBody.put("req", req);
+        requestBody.put("req", modelReq);
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/fontGenerateButton");
         log.info("model字体生成按钮服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
         ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);

@@ -131,7 +131,8 @@ public class ModelController extends BaseController{
     @PostMapping("/fontGenerateButton")
     public Result<String> fontGenerateButton(@RequestBody FontGenerateButtonReq req) throws IOException {
         // 调用 model 客户端服务
-        String imagePath = modelClientService.fontGenerateButton(req);
+        User user = getUser();
+        String imagePath = modelClientService.fontGenerateButton(req,user.getUsername());
         // 读取文件内容
         byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
         String base64Image = Base64.getEncoder().encodeToString(imageBytes);
