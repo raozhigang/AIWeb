@@ -6,6 +6,7 @@ import cn.hutool.core.lang.UUID;
 import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import cn.hutool.json.JSONUtil;
 import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
+import com.ai.mode.school.beans.dto.FontGenerateButtonReq;
 import com.ai.mode.school.beans.dto.FontGenerateDto;
 import com.ai.mode.school.beans.entity.FontData;
 import com.ai.mode.school.beans.entity.User;
@@ -198,5 +199,31 @@ public class ModelClientService {
             List<String> basis_path = fontData.stream().map(FontData::getImageAbsUrl).collect(Collectors.toList());
             fontGenerateDto.setBasisPath(basis_path);
         }
+    }
+
+    /**
+     * 字体生成按钮
+     *
+     * @param req 目标文字
+     */
+    public String fontGenerateButton(FontGenerateButtonReq req) {
+        // 1. 校验数据是否为空
+        if (StringUtils.isAnyEmpty(req.getWeights(),req.getTargetWord())) {
+            throw new BusinessException("参数缺失");
+        }
+        //保存用户操作记录信息
+        //fontGenerationService.saveFontGeneration(user.getUsername(),imageLocalPath);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("req", req);
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(modelServiceUrl+"/fontGenerateButton");
+        log.info("model字体生成按钮服务请求信息:{}",JSONUtil.toJsonStr(requestBody));
+        ResponseEntity<JSONObject> response = restTemplate.exchange(builder.build().toUri(), HttpMethod.POST, new HttpEntity<>(requestBody, headers), JSONObject.class);
+        log.info("model字体生成按钮服务返回信息:{}",JSONUtil.toJsonStr(response));
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody()==null) {
+            throw new BusinessException("model 服务调用失败!");
+        }
+        return response.getBody().getString("detections");
     }
 }

@@ -2,6 +2,7 @@ package com.ai.mode.school.controller;
 
 import cn.hutool.json.JSONUtil;
 import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
+import com.ai.mode.school.beans.dto.FontGenerateButtonReq;
 import com.ai.mode.school.beans.dto.FontGenerateDto;
 import com.ai.mode.school.beans.dto.WeightDto;
 import com.ai.mode.school.beans.entity.FontGeneration;
@@ -81,6 +82,12 @@ public class ModelController extends BaseController{
         return Result.success(base64Image);
     }
 
+
+    /**
+     * 风格分析按钮
+     *
+     * @return  推理结果
+     */
     //批量操作
     @PostMapping("/batchGenerateImage")
     public Result<BatchFontGenerateReq> generateImage(@RequestBody BatchFontGenerateReq req) throws IOException {
@@ -108,9 +115,27 @@ public class ModelController extends BaseController{
         fontGeneration.setBatchNo(req.getBatchNo());
         fontGeneration.setOperateType("FGFX");
         fontGeneration.setStyleType(req.getModel());
+        fontGeneration.setWeights(jsonObject.toString());
         List<String> stringList = req.getData().stream().map(FontGenerateDto::getImagePath).collect(Collectors.toList());
         fontGeneration.setInputImageUrl(JSONUtil.toJsonStr(stringList));
         fontGenerationService.saveFontGeneration(fontGeneration);
         return Result.success(req);
+    }
+
+
+    /**
+     * 字体生成按钮
+     *
+     * @return  生成图像
+     */
+    @PostMapping("/fontGenerateButton")
+    public Result<String> fontGenerateButton(@RequestBody FontGenerateButtonReq req) throws IOException {
+        // 调用 model 客户端服务
+        String imagePath = modelClientService.fontGenerateButton(req);
+        // 读取文件内容
+        byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
+        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+        String base64WithPrefix = "data:image/png;base64," + base64Image;
+        return Result.success(base64WithPrefix);
     }
 }
