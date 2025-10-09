@@ -5,10 +5,7 @@ import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import cn.hutool.json.JSONUtil;
-import com.ai.mode.school.beans.dto.BatchFontGenerateReq;
-import com.ai.mode.school.beans.dto.FontGenerateButtonReq;
-import com.ai.mode.school.beans.dto.FontGenerateDto;
-import com.ai.mode.school.beans.dto.FontGenerateModelReq;
+import com.ai.mode.school.beans.dto.*;
 import com.ai.mode.school.beans.entity.FontData;
 import com.ai.mode.school.beans.entity.FontGeneration;
 import com.ai.mode.school.beans.entity.User;
@@ -34,6 +31,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -125,6 +124,37 @@ public class ModelClientService {
         return imageLocalPath;
     }
 
+    public void addFontImage(List<WeightDto> weightDtoList,List<String> urls){
+        Map<Integer, String> idToUrlMap = new HashMap<>();
+        Pattern idPattern = Pattern.compile("id_(\\d+)"); // 匹配 id_后面的数字
+
+        for (String url : urls) {
+            Matcher matcher = idPattern.matcher(url);
+            if (matcher.find()) {
+                int id = Integer.parseInt(matcher.group(1)); // 如 "id_3" → 3
+                idToUrlMap.put(id, url);
+            } else {
+                System.err.println("URL格式不符合，未找到 id_数字: " + url);
+            }
+        }
+        // Step 2: 构建 基字体X -> URL 的映射
+        Pattern fontPattern = Pattern.compile("基字体(\\d+)"); // 匹配 基字体后面的数字
+        for (WeightDto weightDto : weightDtoList) {
+            String fontName = weightDto.getWeightName();
+            Matcher matcher = fontPattern.matcher(fontName);
+            if (matcher.find()) {
+                int id = Integer.parseInt(matcher.group(1)); // 如 "基字体3" → 3
+                String url = idToUrlMap.get(id);
+                if (url != null) {
+                    weightDto.setBase64UrlSample(url);
+                } else {
+                    System.err.println("未找到 id=" + id + " 对应的 URL，字体: " + fontName);
+                }
+            } else {
+                System.err.println("字体名称格式不符合，未找到 基字体数字: " + fontName);
+            }
+        }
+    }
     public JSONObject batchGenerateSimilarImgPath(BatchFontGenerateReq req) {
         if (CollectionUtil.isEmpty(req.getData())) {
             throw new BusinessException("请求参数不全");
@@ -148,7 +178,19 @@ public class ModelClientService {
                 throw new BusinessException("model服务权重计算调用失败，状态码：" + response.getStatusCodeValue());
             }
             JSONObject body = response.getBody();
-            return body.getJSONObject("received_items");
+            JSONObject jsonObject = body.getJSONObject("received_items");
+            //设置基字体占比权重
+            List<WeightDto> list = new ArrayList<>();
+            for (String key : jsonObject.keySet()) {
+                WeightDto weightDto = new WeightDto();
+                weightDto.setWeightName(key);
+                weightDto.setWeightValue(jsonObject.getString(key));
+                list.add(weightDto);
+            }
+            req.setWeightList(list);
+            //填充基字体样例图片
+            addFontImage(req.getWeightList(),req.getData().get(0).getBasisPath());
+            return jsonObject;
         } catch (Exception e) {
             log.error("模型服务权重计算异常:{}",e.getMessage());
         }

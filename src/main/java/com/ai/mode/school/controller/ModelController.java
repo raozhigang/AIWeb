@@ -92,21 +92,20 @@ public class ModelController extends BaseController{
     @PostMapping("/batchGenerateImage")
     public Result<BatchFontGenerateReq> generateImage(@RequestBody BatchFontGenerateReq req) throws IOException {
         JSONObject jsonObject = modelClientService.batchGenerateSimilarImgPath(req);
-        List<WeightDto> list = new ArrayList<>();
-        for (String key : jsonObject.keySet()) {
-            WeightDto weightDto = new WeightDto();
-            weightDto.setWeightName(key);
-            weightDto.setWeightValue(jsonObject.getString(key));
-            list.add(weightDto);
-        }
-        req.setWeightList(list);
-        // 返回批量预处理内容
+        // 转换为base64图片
         for (FontGenerateDto dto : req.getData()) {
             String imagePath = dto.getImagePath();
             byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             String base64WithPrefix = "data:image/png;base64," + base64Image;
             dto.setBase64Url(base64WithPrefix);
+        }
+        for (WeightDto dto : req.getWeightList()) {
+            String imagePath = dto.getBase64UrlSample();
+            byte[] imageBytes = Files.readAllBytes(new File(imagePath).toPath());
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+            String base64WithPrefix = "data:image/png;base64," + base64Image;
+            dto.setBase64UrlSample(base64WithPrefix);
         }
         //保存操作记录
         User user = getUser();

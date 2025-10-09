@@ -10,4 +10,6 @@ public class WeightDto {
 
     private String weightValue;
 
+    private String base64UrlSample;
+
 }
